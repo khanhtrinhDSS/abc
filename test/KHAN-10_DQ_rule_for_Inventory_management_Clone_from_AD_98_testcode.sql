@@ -10,17 +10,17 @@ WITH MandatoryFieldsCheck AS (
   SELECT
     'Mandatory Fields Check' AS check_name,
     CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
-    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) - COUNT(CASE WHEN product_ID IS NULL OR product_name IS NULL OR quantity IS NULL OR location IS NULL OR expiry_date IS NULL OR batch_number IS NULL OR supplier_ID IS NULL THEN 1 END) FROM purgo_playground.drug_inventory_management) / (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) / COUNT(*) END AS pass_percentage
   FROM purgo_playground.drug_inventory_management
   WHERE product_ID IS NULL OR product_name IS NULL OR quantity IS NULL OR location IS NULL OR expiry_date IS NULL OR 
-        batch_number IS NULL OR supplier_ID IS NULL
+        batch_number IS NULL OR supplier_ID IS NULL       
 ),
 ExpiryDateCheck AS (
   -- Check to ensure expiry_date is greater than purchase_date
   SELECT
     'Expiry Date Check' AS check_name,
     CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
-    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) - COUNT(CASE WHEN expiry_date <= purchase_date THEN 1 END) FROM purgo_playground.drug_inventory_management) / (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) / COUNT(*) END AS pass_percentage
   FROM purgo_playground.drug_inventory_management
   WHERE expiry_date <= purchase_date
 ),
@@ -29,7 +29,7 @@ DistinctValueCheck AS (
   SELECT
     'Distinct Value Check' AS check_name,
     CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
-    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(DISTINCT product_ID) + COUNT(DISTINCT batch_number) FROM purgo_playground.drug_inventory_management) / (SELECT 2 * COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * 2 * (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) / (SELECT COUNT(DISTINCT product_ID) + COUNT(DISTINCT batch_number) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
   FROM (
     SELECT product_ID, batch_number FROM purgo_playground.drug_inventory_management
     GROUP BY product_ID, batch_number HAVING COUNT(*) > 1
@@ -40,7 +40,7 @@ DataConsistencyCheck AS (
   SELECT
     'Data Consistency Check' AS check_name,
     CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
-    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) - COUNT(CASE WHEN quantity <= 0 OR NOT product_ID LIKE 'P%' THEN 1 END) FROM purgo_playground.drug_inventory_management) / (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) / COUNT(*) END AS pass_percentage
   FROM purgo_playground.drug_inventory_management
   WHERE quantity <= 0 OR NOT product_ID LIKE 'P%'
 )
