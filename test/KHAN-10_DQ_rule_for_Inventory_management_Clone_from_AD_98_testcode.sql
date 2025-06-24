@@ -1,1 +1,55 @@
-LS0gRGF0YWJyaWNrcyBTUUwgc2NyaXB0Ci0tIFB1cnBvc2U6IENyZWF0ZSBhIGRhdGEgcXVhbGl0eSB2YWxpZGF0aW9uIHJlcG9ydCBmb3IgdGhlIGRydWdfaW52ZW50b3J5X21hbmFnZW1lbnQgdGFibGUKLS0gQXV0aG9yOiBLaGFuaCBUcmluaAotLSBEYXRlOiAyMDI1LTA2LTI0Ci0tIERlc2NyaXB0aW9uOiBUaGlzIHNjcmlwdCBwZXJmb3JtcyBkYXRhIHF1YWxpdHkgY2hlY2tzIG9uIHRoZSBkcnVnX2ludmVudG9yeV9tYW5hZ2VtZW50IHRhYmxlIGJhc2VkIG9uIHByb3ZpZGVkIHJ1bGVzIGFuZCBnZW5lcmF0ZXMgYSByZXBvcnQgd2l0aCB0aGUgY2hlY2sgbmFtZSwgcmVzdWx0LCBhbmQgcGFzcyBwZXJjZW50YWdlLgoKLS0gQ29tbW9uIFRhYmxlIEV4cHJlc3Npb24gKENURSkgZm9yIGVhY2ggb2YgdGhlIGRhdGEgcXVhbGl0eSBjaGVja3MKV0lUSCBNYW5kYXRvcnlGaWVsZHNDaGVjayBBUyAoCiAgLS0gQ2hlY2sgdG8gZW5zdXJlIG1hbmRhdG9yeSBmaWVsZHMgYXJlIG5vdCBudWxsCiAgU0VMRUNUCiAgICAnTWFuZGF0b3J5IEZpZWxkcyBDaGVjaycgQVMgY2hlY2tfbmFtZSwKICAgIENBU0UgV0hFTiBDT1VOVCgqKSA9IDAgVEhFTiAncGFzcycgRUxTRSAnZmFpbCcgRU5EIEFTIHJlc3VsdCwKICAgIENBU0UgV0hFTiBDT1VOVCgqKSA9IDAgVEhFTiAxMDAuMCBFTFNFIDEwMC4wICogQ09VTlQoKikgLyAoU0VMRUNUIENPVU5UKCopIEZST00gcHVyZ29fcGxheWdyb3VuZC5kcnVnX2ludmVudG9yeV9tYW5hZ2VtZW50KSBFTkQgQVMgcGFzc19wZXJjZW50YWdlCiAgRlJPTSBwdXJnb19wbGF5Z3JvdW5kLmRydWdfaW52ZW50b3J5X21hbmFnZW1lbnQKICBXSEVSRSBwcm9kdWN0X0lEIElTIE5VTEwgT1IgcHJvZHVjdF9uYW1lIElTIE5VTEwgT1IgcXVhbnRpdHkgSVMgTlVMTCBPUiBsb2NhdGlvbiBJUyBOVUxMIE9SIGV4cGlyeV9kYXRlIElTIE5VTEwgT1IgCiAgICAgICAgYmF0Y2hfbnVtYmVyIElTIE5VTEwgT1Igc3VwcGxpZXJfSUQgSVMgTlVMTAopLApFeHBpcnlEYXRlQ2hlY2sgQVMgKAogIC0tIENoZWNrIHRvIGVuc3VyZSBleHBpcnlfZGF0ZSBpcyBncmVhdGVyIHRoYW4gcHVyY2hhc2VfZGF0ZQogIFNFTEVDVAogICAgJ0V4cGlyeSBEYXRlIENoZWNrJyBBUyBjaGVja19uYW1lLAogICAgQ0FTRSBXSEVOIENPVU5UKCopID0gMCBUSEVOICdwYXNzJyBFTFNFICdmYWlsJyBFTkQgQVMgcmVzdWx0LAogICAgQ0FTRSBXSEVOIENPVU5UKCopID0gMCBUSEVOIDEwMC4wIEVMU0UgMTAwLjAgKiBDT1VOVCgqKSAvIChTRUxFQ1QgQ09VTlQoKikgRlJPTSBwdXJnb19wbGF5Z3JvdW5kLmRydWdfaW52ZW50b3J5X21hbmFnZW1lbnQpIEVORCBBUyBwYXNzX3BlcmNlbnRhZ2UKICBGUk9NIHB1cmdvX3BsYXlncm91bmQuZHJ1Z19pbnZlbnRvcnlfbWFuYWdlbWVudAogIFdIRVJFIGV4cGlyeV9kYXRlIDw9IHB1cmNoYXNlX2RhdGUKKSwKRGlzdGluY3RWYWx1ZUNoZWNrIEFTICgKICAtLSBDaGVjayB0byBlbnN1cmUgcHJvZHVjdF9JRCBhbmQgYmF0Y2hfbnVtYmVyIGFyZSBkaXN0aW5jdAogIFNFTEVDVAogICAgJ0Rpc3RpbmN0IFZhbHVlIENoZWNrJyBBUyBjaGVja19uYW1lLAogICAgQ0FTRSBXSEVOIENPVU5UKCopID0gMCBUSEVOICdwYXNzJyBFTFNFICdmYWlsJyBFTkQgQVMgcmVzdWx0LAogICAgQ0FTRSBXSEVOIENPVU5UKCopID0gMCBUSEVOIDEwMC4wIEVMU0UgMTAwLjAgKiAyICogQ09VTlQoKikgLyAoU0VMRUNUIENPVU5UKERJU1RJTkNUIHByb2R1Y3RfSUQpICsgQ09VTlQoRElTVElOQ1QgYmF0Y2hfbnVtYmVyKSBGUk9NIHB1cmdvX3BsYXlncm91bmQuZHJ1Z19pbnZlbnRvcnlfbWFuYWdlbWVudCkgRU5EIEFTIHBhc3NfcGVyY2VudGFnZQogIEZST00gKAogICAgU0VMRUNUIHByb2R1Y3RfSUQsIGJhdGNoX251bWJlciBGUk9NIHB1cmdvX3BsYXlncm91bmQuZHJ1Z19pbnZlbnRvcnlfbWFuYWdlbWVudAogICAgR1JPVVAgQlkgcHJvZHVjdF9JRCwgYmF0Y2hfbnVtYmVyIEhBVklORyBDT1VOVCgqKSA+IDEKICApCiksCkRhdGFDb25zaXN0ZW5jeUNoZWNrIEFTICgKICAtLSBDaGVjayB0byBlbnN1cmUgcXVhbnRpdHkgaXMgcG9zaXRpdmUgYW5kIHByb2R1Y3RfSUQgc3RhcnRzIHdpdGggIlAiCiAgU0VMRUNUCiAgICAnRGF0YSBDb25zaXN0ZW5jeSBDaGVjaycgQVMgY2hlY2tfbmFtZSwKICAgIENBU0UgV0hFTiBDT1VOVCgqKSA9IDAgVEhFTiAncGFzcycgRUxTRSAnZmFpbCcgRU5EIEFTIHJlc3VsdCwKICAgIENBU0UgV0hFTiBDT1VOVCgqKSA9IDAgVEhFTiAxMDAuMCBFTFNFIDEwMC4wICogQ09VTlQoKikgLyAoU0VMRUNUIENPVU5UKCopIEZST00gcHVyZ29fcGxheWdyb3VuZC5kcnVnX2ludmVudG9yeV9tYW5hZ2VtZW50KSBFTkQgQVMgcGFzc19wZXJjZW50YWdlCiAgRlJPTSBwdXJnb19wbGF5Z3JvdW5kLmRydWdfaW52ZW50b3J5X21hbmFnZW1lbnQKICBXSEVSRSBxdWFudGl0eSA8PSAwIE9SIE5PVCBwcm9kdWN0X0lEIExJS0UgJ1AlJwopCgotLSBGaW5hbCBkYXRhIHF1YWxpdHkgcmVwb3J0IGNvbWJpbmluZyByZXN1bHRzIGZyb20gYWxsIGNoZWNrcwpTRUxFQ1QgKiBGUk9NIE1hbmRhdG9yeUZpZWxkc0NoZWNrClVOSU9OIEFMTApTRUxFQ1QgKiBGUk9NIEV4cGlyeURhdGVDaGVjawpVTklPTiBBTEwKU0VMRUNUICogRlJPTSBEaXN0aW5jdFZhbHVlQ2hlY2sKVU5JT04gQUxMClNFTEVDVCAqIEZST00gRGF0YUNvbnNpc3RlbmN5Q2hlY2s7Cgo=
+-- Databricks SQL script
+-- Purpose: Create a data quality validation report for the drug_inventory_management table
+-- Author: Khanh Trinh
+-- Date: 2025-06-24
+-- Description: This script performs data quality checks on the drug_inventory_management table based on provided rules and generates a report with the check name, result, and pass percentage.
+
+-- Common Table Expression (CTE) for each of the data quality checks
+WITH MandatoryFieldsCheck AS (
+  -- Check to ensure mandatory fields are not null
+  SELECT
+    'Mandatory Fields Check' AS check_name,
+    CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) - COUNT(CASE WHEN product_ID IS NULL OR product_name IS NULL OR quantity IS NULL OR location IS NULL OR expiry_date IS NULL OR batch_number IS NULL OR supplier_ID IS NULL THEN 1 END) FROM purgo_playground.drug_inventory_management) / (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+  FROM purgo_playground.drug_inventory_management
+  WHERE product_ID IS NULL OR product_name IS NULL OR quantity IS NULL OR location IS NULL OR expiry_date IS NULL OR 
+        batch_number IS NULL OR supplier_ID IS NULL
+),
+ExpiryDateCheck AS (
+  -- Check to ensure expiry_date is greater than purchase_date
+  SELECT
+    'Expiry Date Check' AS check_name,
+    CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) - COUNT(CASE WHEN expiry_date <= purchase_date THEN 1 END) FROM purgo_playground.drug_inventory_management) / (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+  FROM purgo_playground.drug_inventory_management
+  WHERE expiry_date <= purchase_date
+),
+DistinctValueCheck AS (
+  -- Check to ensure product_ID and batch_number are distinct
+  SELECT
+    'Distinct Value Check' AS check_name,
+    CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(DISTINCT product_ID) + COUNT(DISTINCT batch_number) FROM purgo_playground.drug_inventory_management) / (SELECT 2 * COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+  FROM (
+    SELECT product_ID, batch_number FROM purgo_playground.drug_inventory_management
+    GROUP BY product_ID, batch_number HAVING COUNT(*) > 1
+  )
+),
+DataConsistencyCheck AS (
+  -- Check to ensure quantity is positive and product_ID starts with "P"
+  SELECT
+    'Data Consistency Check' AS check_name,
+    CASE WHEN COUNT(*) = 0 THEN 'pass' ELSE 'fail' END AS result,
+    CASE WHEN COUNT(*) = 0 THEN 100.0 ELSE 100.0 * (SELECT COUNT(*) - COUNT(CASE WHEN quantity <= 0 OR NOT product_ID LIKE 'P%' THEN 1 END) FROM purgo_playground.drug_inventory_management) / (SELECT COUNT(*) FROM purgo_playground.drug_inventory_management) END AS pass_percentage
+  FROM purgo_playground.drug_inventory_management
+  WHERE quantity <= 0 OR NOT product_ID LIKE 'P%'
+)
+
+-- Final data quality report combining results from all checks
+SELECT * FROM MandatoryFieldsCheck
+UNION ALL
+SELECT * FROM ExpiryDateCheck
+UNION ALL
+SELECT * FROM DistinctValueCheck
+UNION ALL
+SELECT * FROM DataConsistencyCheck;
