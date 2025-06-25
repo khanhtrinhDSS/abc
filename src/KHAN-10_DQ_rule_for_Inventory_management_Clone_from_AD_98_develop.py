@@ -1,207 +1,204 @@
 spark.catalog.setCurrentCatalog("purgo_databricks")
 
-# PySpark script for running data quality checks on purgo_playground.drug_inventory_management
-# Purpose: Check for nulls, validity, distinctness and consistency as defined in DQ_rules_IM for inventory management
+# PySpark script - Data Quality Validation for Inventory Management
+# Purpose: Perform data quality checks on 'purgo_playground.drug_inventory_management' as per DQ_rules_IM
 # Author: Khanh Trinh
 # Date: 2025-06-25
-# Description: This script reads the drug inventory management table and performs 4 DQ checks (mandatory fields, expiry date, distinct fields, value consistency). 
-#              For each rule, it records the result and pass percentage. 
-#              The resulting metrics per rule are stored in a data quality DataFrame and displayed.
-#              Error handling is present for missing columns and type mismatches.
+# Description: This script validates key DQ rules (mandatory fields, expiry date check, distinct value, data consistency) over the inventory table, enforcing schema and reporting a summary dataframe of rule results ('check_name', 'result', 'pass_').
 
-try:
-    # from pyspark.sql import SparkSession  # SparkSession already available in Databricks
-    from pyspark.sql.functions import col, count, sum, when, lit, expr  
-    from pyspark.sql.types import StructType, StructField, StringType, DoubleType  
-    # All above are from pyspark.sql - Databricks runtime
-    # No need for pip install
+# from pyspark.sql import SparkSession  # SparkSession pre-initialized in Databricks
 
-    ##############################################
-    # Configuration and Helper Variable Section  #
-    ##############################################
+from pyspark.sql.functions import col, count, when, isnan, lit, regexp_extract, expr, monotonically_increasing_id, sum as spark_sum, countDistinct, round  
+from pyspark.sql.types import StringType, LongType, TimestampType, DoubleType, StructType, StructField  
 
-    # Table name (UNITY CATALOG.SCHEMA.TABLE)
-    inventory_tbl = "purgo_playground.drug_inventory_management"
+# ========= CONFIGURATION =========
 
-    # List of mandatory fields for the Mandatory Fields Check
-    mandatory_fields = [
-        "product_ID",
-        "product_name",
-        "quantity",
-        "location",
-        "expiry_date",
-        "batch_number",
-        "supplier_ID"
-    ]
+CATALOG = "purgo_databricks"
+SCHEMA = "purgo_playground"
+TABLE = "drug_inventory_management"
+FULL_TABLE = f"{CATALOG}.{SCHEMA}.{TABLE}"
 
-    # Columns required for each check
-    expiry_needed = ["expiry_date", "purchase_date"]
-    distinct_needed = ["product_ID", "batch_number"]
-    consistency_needed = ["quantity", "product_ID"]
+REQUIRED_COLUMNS = [
+    "product_ID", "product_name", "quantity", "location",
+    "expiry_date", "batch_number", "supplier_ID", "purchase_date"
+]
 
-    #########################
-    # Data Quality Checkers #
-    #########################
+DQ_RULES = [
+    {"check_name": "Mandatory Fields Check"},
+    {"check_name": "Expiry Date Check"},
+    {"check_name": "Distinct value Check"},
+    {"check_name": "Data Consistency Check"}
+]
 
-    def get_table_with_column_check(table_name, columns):
-        """
-        Checks if the specified columns exist in the table schema.
+# ========= UTILITY FUNCTIONS =========
 
-        Args:
-            table_name (str): The Unity Catalog table path.
-            columns (List[str]): Columns to validate existence.
+def check_table_exists(catalog:str, schema:str, table:str) -> bool:
+    """
+    Checks if a table exists in the Unity Catalog.
+    Args:
+        catalog (str): Catalog name.
+        schema (str): Schema/database name.
+        table (str): Table name.
 
-        Returns:
-            DataFrame: The loaded Spark DataFrame if columns exist.
+    Returns:
+        bool: True if table exists.
+    """
+    try:
+        tables = spark.catalog.listTables(f"{catalog}.{schema}")
+        for t in tables:
+            if t.name == table and t.tableType in ["MANAGED", "EXTERNAL"]:
+                return True
+        return False
+    except Exception:
+        return False
 
-        Raises:
-            Exception: If any required columns are missing.
-        """
-        df = spark.table(table_name)
-        col_set = set(map(str.lower, df.columns))
-        missing_cols = [c for c in columns if c.lower() not in col_set]
-        if missing_cols:
-            raise Exception(f"Missing columns in {table_name}: {missing_cols}")
-        return df
+def enforce_columns(df, required_cols:list) -> list:
+    """
+    Checks if all required columns exist in a DataFrame.
+    Args:
+        df (DataFrame): Input dataframe.
+        required_cols (list): Required column names.
 
-    def safe_pass_percent(numerator, denominator):
-        """
-        Computes pass percentage as float.
+    Returns:
+        list: List of missing column names (empty if none missing).
+    """
+    existing = set(df.columns)
+    missing = [col_ for col_ in required_cols if col_ not in existing]
+    return missing
 
-        Args:
-            numerator (int): Passed row count.
-            denominator (int): Total rows.
+def safe_load_table(full_table:str):
+    """
+    Attempts to load a table as DataFrame, raises descriptive error if not present.
+    Args:
+        full_table (str): Full Unity Catalog table path.
 
-        Returns:
-            float: Pass percent (0-100).
-        """
-        if denominator == 0:
-            return 100.0
-        else:
-            return round((numerator / denominator) * 100.0, 2)
+    Returns:
+        DataFrame: Table as DataFrame.
+    """
+    try:
+        return spark.table(full_table)
+    except Exception:
+        raise RuntimeError(f"Table {full_table} does not exist")
 
-    def mandatory_fields_check(df):
-        """
-        Checks for null values in each mandatory field.
+def result_row(name:str, passed:bool, pct:float) -> dict:
+    """
+    Formats a DQ result as a dict.
+    Args:
+        name (str): Check name.
+        passed (bool): Pass/fail.
+        pct (float): Pass percent.
 
-        Args:
-            df (DataFrame): Data to check, requires all mandatory_fields.
+    Returns:
+        dict: Row dict.
+    """
+    return {
+        "check_name": name,
+        "result": "pass" if passed else "fail",
+        "pass_": round(pct, 2)
+    }
 
-        Returns:
-            (str, float): Result ("Passed"/"Failed"), pass percentage.
-        """
-        total = df.count()
-        # Calculate for each row if there is NULL in any of the mandatory fields
-        fails = df.withColumn(
-            "has_null", sum([col(c).isNull().cast("int") for c in mandatory_fields]) > 0
+# ========= MAIN DATA QUALITY LOGIC =========
+
+def dq_check_inventory_management():
+    """
+    Runs all the required data quality checks and returns their overall status.
+    Returns:
+        DataFrame: DataFrame with columns check_name, result, pass_
+    """
+    # Table existence check
+    if not check_table_exists(CATALOG, SCHEMA, TABLE):
+        raise RuntimeError(f"Table {SCHEMA}.{TABLE} does not exist")
+
+    # Load table
+    df = safe_load_table(FULL_TABLE)
+
+    # Schema/column enforcement
+    missing_cols = enforce_columns(df, REQUIRED_COLUMNS)
+    if missing_cols:
+        raise RuntimeError(f"Missing required column(s) for data quality rules: {', '.join(missing_cols)}")
+
+    total_rows = df.count() if not df.rdd.isEmpty() else 0
+    dq_results = []
+
+    # --- Mandatory Fields Check ---
+    # All required columns not NULL
+    if total_rows == 0:
+        man_pass_pct = 100.0
+        man_passed = True
+    else:
+        not_null_cond = (
+            (col('product_ID').isNotNull()) &
+            (col('product_name').isNotNull()) &
+            (col('quantity').isNotNull()) &
+            (col('location').isNotNull()) &
+            (col('expiry_date').isNotNull()) &
+            (col('batch_number').isNotNull()) &
+            (col('supplier_ID').isNotNull())
         )
-        pass_count = fails.filter(~col("has_null")).count()
-        result = "Passed" if pass_count == total else "Failed"
-        return result, safe_pass_percent(pass_count, total)
+        man_valid = df.filter(not_null_cond).count()
+        man_pass_pct = (man_valid / total_rows) * 100 if total_rows > 0 else 100.0
+        man_passed = (man_valid == total_rows)
+    dq_results.append(result_row("Mandatory Fields Check", man_passed, man_pass_pct))
 
-    def expiry_date_check(df):
-        """
-        Checks expiry_date > purchase_date for all rows.
+    # --- Expiry Date Check ---
+    # expiry_date > purchase_date, no nulls
+    if total_rows == 0:
+        exp_pass_pct = 100.0
+        exp_passed = True
+    else:
+        expiry_valid = df.filter(
+            col('expiry_date').isNotNull() &
+            col('purchase_date').isNotNull() &
+            (col('expiry_date') > col('purchase_date'))
+        ).count()
+        exp_pass_pct = (expiry_valid / total_rows) * 100 if total_rows > 0 else 100.0
+        exp_passed = (expiry_valid == total_rows)
+    dq_results.append(result_row("Expiry Date Check", exp_passed, exp_pass_pct))
 
-        Args:
-            df (DataFrame): Data to check, requires expiry_date, purchase_date.
+    # --- Distinct value Check ---
+    # (product_ID, batch_number) all distinct
+    if total_rows == 0:
+        uniq_pass_pct = 100.0
+        uniq_passed = True
+    else:
+        num_distinct_pairs = df.select('product_ID', 'batch_number').distinct().count()
+        uniq_pass_pct = (num_distinct_pairs / total_rows) * 100 if total_rows > 0 else 100.0
+        uniq_passed = (num_distinct_pairs == total_rows)
+    dq_results.append(result_row("Distinct value Check", uniq_passed, uniq_pass_pct))
 
-        Returns:
-            (str, float): Result ("Passed"/"Failed"), pass percentage.
-        """
-        total = df.count()
-        # expiry_date NULL or purchase_date NULL is considered as Fail
-        valid = df.filter(
-            (col("expiry_date").isNotNull())
-            & (col("purchase_date").isNotNull())
-            & (col("expiry_date") > col("purchase_date"))
+    # --- Data Consistency Check ---
+    # quantity > 0 and product_ID starts with 'P'
+    if total_rows == 0:
+        dc_pass_pct = 100.0
+        dc_passed = True
+    else:
+        dc_cond = (
+            (col('quantity').isNotNull()) &
+            (col('quantity') > 0) &
+            (col('product_ID').isNotNull()) &
+            (col('product_ID').rlike('^P.*'))
         )
-        pass_count = valid.count()
-        result = "Passed" if pass_count == total else "Failed"
-        return result, safe_pass_percent(pass_count, total)
+        dc_valid = df.filter(dc_cond).count()
+        dc_pass_pct = (dc_valid / total_rows) * 100 if total_rows > 0 else 100.0
+        dc_passed = (dc_valid == total_rows)
+    dq_results.append(result_row("Data Consistency Check", dc_passed, dc_pass_pct))
 
-    def distinct_value_check(df):
-        """
-        Checks if (product_ID, batch_number) pairs are distinct.
-
-        Args:
-            df (DataFrame): Data to check, requires product_ID, batch_number.
-
-        Returns:
-            (str, float): Result ("Passed"/"Failed"), pass percentage.
-        """
-        pairs = df.groupBy("product_ID", "batch_number").count()
-        dupes = pairs.filter(col("count") > 1).count()
-        # For pass %, all pairs must be unique
-        total_pairs = pairs.count()
-        pass_count = total_pairs - dupes
-        result = "Passed" if dupes == 0 else "Failed"
-        percent = 100.0 if total_pairs == 0 else round(pass_count / total_pairs * 100.0, 2)
-        return result, percent
-
-    def data_consistency_check(df):
-        """
-        Checks quantity > 0 and product_ID starts with P for every row.
-
-        Args:
-            df (DataFrame): Data to check, requires quantity, product_ID.
-
-        Returns:
-            (str, float): Result ("Passed"/"Failed"), pass percentage.
-        """
-        total = df.count()
-        good = df.filter(
-            (col("quantity") > 0) & (col("product_ID").startswith("P"))
-        )
-        pass_count = good.count()
-        result = "Passed" if pass_count == total else "Failed"
-        return result, safe_pass_percent(pass_count, total)
-
-    ##############################
-    # Main Data Quality Runner   #
-    ##############################
-
-    # Load main inventory table for checks; throws exception with missing columns
-    all_required_columns = list(set(
-        mandatory_fields + expiry_needed + distinct_needed + consistency_needed
-    ))
-
-    inventory_df = get_table_with_column_check(inventory_tbl, all_required_columns)
-
-    # 1. Mandatory Fields Check
-    mandatory_result, mandatory_percent = mandatory_fields_check(inventory_df)
-
-    # 2. Expiry Date Check
-    expiry_result, expiry_percent = expiry_date_check(inventory_df)
-
-    # 3. Distinct Value Check
-    distinct_result, distinct_percent = distinct_value_check(inventory_df)
-
-    # 4. Data Consistency Check
-    consistency_result, consistency_percent = data_consistency_check(inventory_df)
-
-    #########################
-    # Assemble Result Table #
-    #########################
-
-    dq_schema = StructType([
+    # Format result to DataFrame/schema
+    schema = StructType([
         StructField("check_name", StringType(), False),
         StructField("result", StringType(), False),
-        StructField("pass_%", DoubleType(), False)
+        StructField("pass_", DoubleType(), False)
     ])
+    dq_df = spark.createDataFrame(dq_results, schema=schema)
+    return dq_df
 
-    dq_results = [
-        ("Mandatory Fields Check", mandatory_result, mandatory_percent),
-        ("Expiry Date Check", expiry_result, expiry_percent),
-        ("Distinct Value Check", distinct_result, distinct_percent),
-        ("Data Consistency Check", consistency_result, consistency_percent)
-    ]
+# ========== EXECUTE MAIN ROUTINE ==========
 
-    dq_results_df = spark.createDataFrame(dq_results, schema=dq_schema)
+# The following block will execute the DQ suite and print result table to stdout.
+try:
+    dq_result_df = dq_check_inventory_management()
+    dq_result_df.show(truncate=False)
+except RuntimeError as e:
+    print(f"Data Quality validation FAILED: {str(e)}")
 
-    # Show the DQ results dataframe
-    dq_results_df.show(truncate=False)
-
-except Exception as err:
-    # Log any error with a print message (could use dbutils.notebook.exit for handoff if required)
-    print(f"ERROR during DQ checks: {err}")
+# (Do not call spark.stop() -- Databricks notebook sessions expect Spark alive!)
