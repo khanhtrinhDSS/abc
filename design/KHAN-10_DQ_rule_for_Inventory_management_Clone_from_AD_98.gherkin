@@ -1,0 +1,65 @@
+Feature: Drug Inventory Management Data Quality Checks
+  Ensure the integrity and quality of data in the drug_inventory_management table before final reporting.
+
+  Background:
+    Given the purgo_playground.drug_inventory_management table exists
+
+  Scenario Outline: Mandatory Fields Check
+    Given the drug_inventory_management table data
+    When checking for null values in mandatory fields: 
+      | Field         |
+      | product_ID    |
+      | product_name  |
+      | quantity      |
+      | location      |
+      | expiry_date   |
+      | batch_number  |
+      | supplier_ID   |
+    Then ensure all fields are not null
+    And record the result in the data quality dataframe
+
+    Examples:
+      | product_ID | product_name | quantity | location | expiry_date       | batch_number | supplier_ID |
+      | P12345     | Aspirin      | 100      | Ware1    | 2023-12-31T00:00Z | BN123456     | S123        |
+      | P67890     | Tylenol      | 200      | Ware2    | 2024-01-15T00:00Z | BN678901     | S456        |
+
+  Scenario Outline: Expiry Date Check
+    Given the drug_inventory_management table data
+    When comparing expiry_date with purchase_date
+    Then ensure expiry_date is greater than purchase_date
+    And record the result in the data quality dataframe
+
+    Examples:
+      | product_ID | expiry_date       | purchase_date       |
+      | P12345     | 2023-12-31T00:00Z | 2023-01-30T00:00Z    |
+      | P67890     | 2024-01-15T00:00Z | 2023-05-20T00:00Z    |
+
+  Scenario Outline: Distinct Value Check
+    Given the drug_inventory_management table data
+    When checking distinct values for "product_ID" and "batch_number"
+    Then ensure no repeated values exist
+    And record the result in the data quality dataframe
+
+  Scenario Outline: Data Consistency Check
+    Given the drug_inventory_management table data
+    When checking if quantity is positive and product_ID starts with "P"
+    Then ensure quantity > 0 and product_ID starts with "P"
+    And record the result in the data quality dataframe
+
+    Examples:
+      | product_ID | quantity |
+      | P12345     | 100      |
+      | P67890     | 200      |
+
+  Scenario Outline: Error Notification for Violations
+    Given a data quality rule violation occurs
+    When the data does not meet the specified rule conditions
+    Then send a notification to the designated platform
+    And include details of the violation
+
+    Examples:
+      | check_name               | result   |
+      | Mandatory Fields Check   | Failed   |
+      | Expiry Date Check        | Failed   |
+      | Distinct Value Check     | Failed   |
+      | Data Consistency Check   | Failed   |
