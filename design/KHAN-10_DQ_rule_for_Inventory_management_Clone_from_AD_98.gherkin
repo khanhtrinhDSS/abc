@@ -1,65 +1,214 @@
-Feature: Drug Inventory Management Data Quality Checks
-  Ensure the integrity and quality of data in the drug_inventory_management table before final reporting.
+Feature: Data Quality Rules Validation for drug_inventory_management Table
+
+  As a data engineer,
+  I want to perform a comprehensive suite of data quality checks on the purgo_playground.drug_inventory_management table
+  So that invalid, incomplete, or inconsistent data does not reach the reporting layer,
+  And DQ rule outcomes (overall per rule) are clearly captured in an audit dataframe with check_name, result, and pass_% fields.
 
   Background:
-    Given the purgo_playground.drug_inventory_management table exists
+    Given the Unity Catalog table purgo_playground.drug_inventory_management with columns:
+      | product_ID        | string   |
+      | product_name      | string   |
+      | quantity          | bigint   |
+      | location          | string   |
+      | expiry_date       | timestamp|
+      | batch_number      | string   |
+      | supplier_ID       | string   |
+      | purchase_date     | timestamp|
+      | last_restocked_date | timestamp|
+      | status            | string   |
+      | data_loaded_at    | timestamp|
+    And data quality rules as sourced from DQ_rules_IM:
+      | Rule_Name              | Rule                                                                                   |
+      | Mandatory Fields Check | Ensure all mandatory fields product_ID, product_name, quantity, location, expiry_date, batch_number, supplier_ID are not null |
+      | Expiry Date Check      | Ensure expiry_date is greater than purchase_date                                       |
+      | Distinct value Check   | Make sure that "Product ID" and "Batch number" are distinct and do not contain any repeated values |
+      | Data Consistency Check | Make sure quantity is positive (> 0) and Ensure product_ID column starts with letter "P" |
 
-  Scenario Outline: Mandatory Fields Check
-    Given the drug_inventory_management table data
-    When checking for null values in mandatory fields: 
-      | Field         |
-      | product_ID    |
-      | product_name  |
-      | quantity      |
-      | location      |
-      | expiry_date   |
-      | batch_number  |
-      | supplier_ID   |
-    Then ensure all fields are not null
-    And record the result in the data quality dataframe
+  ####################################################################################
+  # Scenario: Happy path - all data satisfies all data quality rules
+  ####################################################################################
 
+  Scenario: All rows pass all DQ checks
+    Given the purgo_playground.drug_inventory_management table contains only valid data for all DQ checks, such as:
+      | product_ID | product_name | quantity | location | expiry_date         | batch_number | supplier_ID | purchase_date         |
+      | P1111      | Drug1        | 12       | NYC      | 2025-01-01 00:00:00 | BAT222       | SUPP1       | 2024-01-01 00:00:00   |
+    When the data quality code is run over the table
+    Then the data quality dataframe contains for all rules:
+      | check_name            | result | pass_% |
+      | Mandatory Fields Check| pass   | 100.0  |
+      | Expiry Date Check     | pass   | 100.0  |
+      | Distinct value Check  | pass   | 100.0  |
+      | Data Consistency Check| pass   | 100.0  |
+
+  ####################################################################################
+  # Scenario Outline: Mandatory Fields Check failure coverage
+  ####################################################################################
+
+  Scenario Outline: Mandatory Fields Check should fail if any mandatory field is null
+    Given the purgo_playground.drug_inventory_management table contains:
+      | product_ID | product_name | quantity | location | expiry_date         | batch_number | supplier_ID | purchase_date         |
+      | <pid>      | <pname>      | <qty>    | <loc>    | <expdt>             | <batch>      | <sid>       | <pdt>                 |
+    When the data quality code is run
+    Then the data quality dataframe contains:
+      | check_name            | result | pass_%     |
+      | Mandatory Fields Check| fail   | <expected_pct> |
     Examples:
-      | product_ID | product_name | quantity | location | expiry_date       | batch_number | supplier_ID |
-      | P12345     | Aspirin      | 100      | Ware1    | 2023-12-31T00:00Z | BN123456     | S123        |
-      | P67890     | Tylenol      | 200      | Ware2    | 2024-01-15T00:00Z | BN678901     | S456        |
+      | pid   | pname | qty | loc   | expdt                | batch    | sid   | pdt                  | expected_pct |
+      | NULL  | Drug1 | 1   | NYC   | 2026-01-02 12:00:00  | BAT222   | SUP1  | 2025-01-02 12:00:00  | 0.0         |
+      | P2    | NULL  | 1   | NYC   | 2026-01-02 12:00:00  | BAT222   | SUP1  | 2025-01-02 12:00:00  | 0.0         |
+      | P3    | Drug3 | 1   | NYC   | NULL                 | BAT222   | SUP1  | 2025-01-02 12:00:00  | 0.0         |
+      | P4    | Drug4 | 10  | NULL  | 2026-01-02 12:00:00  | BAT222   | SUP1  | 2025-01-02 12:00:00  | 0.0         |
+      | P5    | Drug5 | 10  | NYC   | 2026-01-02 12:00:00  | BAT222   | NULL  | 2025-01-02 12:00:00  | 0.0         |
+      | P6    | Drug6 |     | NYC   | 2026-01-02 12:00:00  | BAT222   | SUP1  | 2025-01-02 12:00:00  | 0.0         |
 
-  Scenario Outline: Expiry Date Check
-    Given the drug_inventory_management table data
-    When comparing expiry_date with purchase_date
-    Then ensure expiry_date is greater than purchase_date
-    And record the result in the data quality dataframe
+  ####################################################################################
+  # Scenario Outline: Expiry Date Check
+  ####################################################################################
 
+  Scenario Outline: Expiry Date Check should fail when expiry_date is not greater than purchase_date
+    Given the purgo_playground.drug_inventory_management table contains:
+      | product_ID | product_name | quantity | location | expiry_date         | batch_number | supplier_ID | purchase_date         |
+      | <pid>      | <pname>      | <qty>    | <loc>    | <expdt>             | <batch>      | <sid>       | <pdt>                 |
+    When the data quality code is run
+    Then the data quality dataframe contains:
+      | check_name          | result | pass_%   |
+      | Expiry Date Check   | <exp_result> | <exp_pct> |
     Examples:
-      | product_ID | expiry_date       | purchase_date       |
-      | P12345     | 2023-12-31T00:00Z | 2023-01-30T00:00Z    |
-      | P67890     | 2024-01-15T00:00Z | 2023-05-20T00:00Z    |
+      | pid  | pname  | qty | loc  | expdt                   | batch     | sid | pdt                   | exp_result | exp_pct   |
+      | P100 | DrugX  | 5   | LA   | 2023-01-01 00:00:00     | BAT888    | SUP2| 2024-01-01 00:00:00   | fail       | 0.0       |
+      | P101 | DrugY  | 8   | LA   | 2024-01-01 00:00:00     | BAT889    | SUP3| 2024-01-01 00:00:00   | fail       | 0.0       |
+      | P102 | DrugZ  | 9   | LA   | 2025-12-31 23:59:59     | BAT890    | SUP4| 2022-01-01 00:00:00   | pass       | 100.0     |
 
-  Scenario Outline: Distinct Value Check
-    Given the drug_inventory_management table data
-    When checking distinct values for "product_ID" and "batch_number"
-    Then ensure no repeated values exist
-    And record the result in the data quality dataframe
+  ####################################################################################
+  # Scenario Outline: Distinct value Check
+  ####################################################################################
 
-  Scenario Outline: Data Consistency Check
-    Given the drug_inventory_management table data
-    When checking if quantity is positive and product_ID starts with "P"
-    Then ensure quantity > 0 and product_ID starts with "P"
-    And record the result in the data quality dataframe
-
+  Scenario Outline: Distinct value Check for duplicated product_ID and batch_number
+    Given the purgo_playground.drug_inventory_management table contains:
+      | product_ID | batch_number |
+      | <pid1>     | <batch1>    |
+      | <pid2>     | <batch2>    |
+      | <pid3>     | <batch3>    |
+    When the data quality code is run
+    Then the data quality dataframe contains:
+      | check_name           | result | pass_% |
+      | Distinct value Check | <dv_res> | <dv_pct> |
     Examples:
+      | pid1  | batch1 | pid2  | batch2 | pid3  | batch3 | dv_res | dv_pct  |
+      | P100  | BA1    | P101  | BA2    | P100  | BA1    | fail   | 66.67   |
+      | P20   | BA10   | P30   | BA11   | P40   | BA12   | pass   | 100.0   |
+      | P50   | BA22   | P51   | BA23   | P52   | BA22   | fail   | 66.67   |
+
+  ####################################################################################
+  # Scenario Outline: Data Consistency Check
+  ####################################################################################
+
+  Scenario Outline: Data Consistency Check for quantity > 0 and product_ID pattern
+    Given the purgo_playground.drug_inventory_management table contains:
       | product_ID | quantity |
-      | P12345     | 100      |
-      | P67890     | 200      |
-
-  Scenario Outline: Error Notification for Violations
-    Given a data quality rule violation occurs
-    When the data does not meet the specified rule conditions
-    Then send a notification to the designated platform
-    And include details of the violation
-
+      | <pid>      | <qty>   |
+    When the data quality code is run
+    Then the data quality dataframe contains:
+      | check_name             | result | pass_%   |
+      | Data Consistency Check | <cons_res> | <cons_pct> |
     Examples:
-      | check_name               | result   |
-      | Mandatory Fields Check   | Failed   |
-      | Expiry Date Check        | Failed   |
-      | Distinct Value Check     | Failed   |
-      | Data Consistency Check   | Failed   |
+      | pid   | qty | cons_res | cons_pct |
+      | Q101  | 0   | fail     | 0.0      |
+      | P101  | -1  | fail     | 0.0      |
+      | PAB1  | 1   | pass     | 100.0    |
+      | X100  | 50  | fail     | 0.0      |
+      | P200  | 200 | pass     | 100.0    |
+
+  ####################################################################################
+  # Combined Scenario Outline: Multiple rule failures in one run
+  ####################################################################################
+
+  Scenario Outline: Multiple DQ rules fail on mixed quality data
+    Given the purgo_playground.drug_inventory_management table contains:
+      | product_ID | product_name | quantity | location | expiry_date         | batch_number | supplier_ID | purchase_date         |
+      | <pid1>     | <pname1>     | <qty1>   | <loc1>   | <expdt1>            | <batch1>     | <sid1>      | <pdt1>               |
+      | <pid2>     | <pname2>     | <qty2>   | <loc2>   | <expdt2>            | <batch2>     | <sid2>      | <pdt2>               |
+    When the data quality code is run
+    Then the data quality dataframe contains:
+      | check_name             | result | pass_%   |
+      | Mandatory Fields Check | <man_result> | <man_pct> |
+      | Expiry Date Check      | <exp_result> | <exp_pct> |
+      | Distinct value Check   | <dv_result>  | <dv_pct>  |
+      | Data Consistency Check | <dc_result>  | <dc_pct>  |
+    Examples:
+      | pid1 | pname1 | qty1 | loc1 | expdt1      | batch1 | sid1 | pdt1       | pid2 | pname2 | qty2 | loc2 | expdt2      | batch2 | sid2 | pdt2       | man_result | man_pct | exp_result | exp_pct | dv_result | dv_pct | dc_result | dc_pct |
+      | NULL | DrugA  | 10   | NYC  | 2025-01-01 00:00:00 | B123 | S1   | 2024-01-01 00:00:00 | PAB2 | DrugB  | 12   | LA   | 2023-01-01 00:00:00 | B124 | S2   | 2023-01-02 00:00:00 | fail | 50.0 | fail | 50.0 | pass | 100.0 | pass | 100.0|
+      | P111 | DrugC  | -5   | LON  | 2025-05-10 00:00:00 | B200 | S3   | 2024-05-01 00:00:00 | P112 | DrugD  | 2    | DXB  | 2023-11-01 00:00:00 | B200 | S3   | 2023-10-01 00:00:00 | pass | 100.0 | pass | 100.0 | fail | 50.0 | fail | 50.0 |
+
+  ####################################################################################
+  # Error Message and Validation Rules (Technical Detail)
+  ####################################################################################
+
+  Rule: Mandatory Fields Check
+    - Columns: product_ID, product_name, quantity, location, expiry_date, batch_number, supplier_ID
+    - Validation: All columns must be NOT NULL for every row.
+    - Error condition: If any row contains null in any of these columns.
+    - Error message: "Mandatory Fields Check failed: Null values present in one or more mandatory columns"
+    - result: "pass" if all rows ok, "fail" if any row fails. pass_% = (valid rows) / (total rows) * 100
+
+  Rule: Expiry Date Check
+    - Columns: expiry_date, purchase_date
+    - Validation: expiry_date > purchase_date (timestamp comparison) for every row.
+    - Error condition: expiry_date <= purchase_date or null in either field
+    - Error message: "Expiry Date Check failed: expiry_date not greater than purchase_date for some row(s)"
+    - result: "pass" if all rows ok, "fail" if any row fails. pass_% = (rows passing this rule) / (total rows) * 100
+
+  Rule: Distinct value Check
+    - Columns: product_ID, batch_number
+    - Validation: All (product_ID, batch_number) combinations in the table are unique.
+    - Error condition: Duplicate (product_ID, batch_number) exists in table.
+    - Error message: "Distinct value Check failed: Duplicate product_ID-batch_number pairs found"
+    - result: "pass" if all distinct, "fail" if any duplicate exists. pass_% = (number of distinct pairs) / (total rows) * 100
+
+  Rule: Data Consistency Check
+    - Columns: quantity, product_ID
+    - Validation:
+        * quantity > 0 (no negative or zero values)
+        * product_ID starts with letter "P" (regex: ^P.*)
+    - Error conditions:
+        * quantity is null or <= 0
+        * product_ID does not match pattern
+    - Error message: "Data Consistency Check failed: quantity <= 0 or invalid product_ID pattern"
+    - result: "pass" if all rows ok, "fail" if any row fails check. pass_% = (rows passing both sub-checks) / (total rows) * 100
+
+  ####################################################################################
+  # Scenario: Validation Error for Missing Input Table or Schema
+  ####################################################################################
+
+  Scenario: DQ run fails if purgo_playground.drug_inventory_management table does not exist
+    Given the drug_inventory_management table does not exist in schema purgo_playground
+    When the data quality code is run
+    Then the process fails with error message "Table purgo_playground.drug_inventory_management does not exist"
+
+  ####################################################################################
+  # Scenario: Validation Error for Missing Columns
+  ####################################################################################
+
+  Scenario Outline: DQ run fails if required column(s) missing from schema
+    Given the following column(s) missing from the drug_inventory_management table: <missing_cols>
+    When the data quality code is run
+    Then the process fails with error message "Missing required column(s) for data quality rules: <missing_cols>"
+    Examples:
+      | missing_cols                                |
+      | product_ID                                  |
+      | product_ID, batch_number, expiry_date       |
+      | product_name, location, supplier_ID         |
+
+  ####################################################################################
+  # Scenario: Technical Output Structure
+  ####################################################################################
+
+  Scenario: Data quality result dataframe output schema is enforced
+    When the data quality code completes
+    Then the output is a dataframe with schema:
+      | check_name:string | result:string | pass_:double |
+    And check_name in ("Mandatory Fields Check", "Expiry Date Check", "Distinct value Check", "Data Consistency Check")
+    And result in ("pass", "fail")
+    And pass_ between 0.0 and 100.0 inclusive
+
